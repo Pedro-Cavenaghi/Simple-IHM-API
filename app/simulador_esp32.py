@@ -1,10 +1,13 @@
 import asyncio
 import random
 import httpx
+import os
 
 # Rotas da API
-API_ENVIAR_DADOS = "http://localhost:8000/enviar-dados"
-API_MANUTENCOES = "http://localhost:8000/manutencoes"
+BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8000")
+
+API_ENVIAR_DADOS = f"{BASE_URL}/enviar-dados"
+API_MANUTENCOES = f"{BASE_URL}/manutencoes"
 
 CONFIG_MAQUINAS = {
     1: {"tag": "CNC-01", "corrente_media": 15.5, "vibracao_media": 2.1},
