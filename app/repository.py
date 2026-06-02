@@ -119,7 +119,7 @@ async def obter_status_por_id(conn: asyncpg.Connection, maquina_id: int) -> dict
         """
         registro = await conn.fetchrow(sql, maquina_id)
         
-        # Converte explicitamente para dict para não quebrar a serialização do FastAPI
+        
         return dict(registro) if registro else None
         
     except Exception as e:
@@ -133,7 +133,7 @@ async def buscar_historico_logs(
     periodo: str, 
     data_inicio: date | None, 
     data_fim: date | None,
-    limite: int = 500  # <-- Adicionado limite padrão para proteger a API
+    limite: int = 500  
 ):
     try:
         sql = """
@@ -172,10 +172,8 @@ async def buscar_historico_logs(
             parametros.append(data_fim)
             contador += 2
 
-        # A ordenação usa o índice físico que você criou
         sql += " ORDER BY horario_do_log DESC"
         
-        # Limitamos o tamanho do payload que o Python vai serializar
         sql += f" LIMIT {limite};"
 
         registros = await conn.fetch(sql, *parametros)
@@ -222,7 +220,6 @@ async def listar_funcionarios_ativos(conn: asyncpg.Connection):
         """
         registros = await conn.fetch(sql)
         
-        # Correção aqui: mapeia os Records para dicionários antes de retornar
         return [dict(r) for r in registros]
         
     except Exception as e:

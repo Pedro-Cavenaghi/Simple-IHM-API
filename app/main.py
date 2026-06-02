@@ -40,6 +40,7 @@ class LoginRequest(BaseModel):
     email: str
     senha: str
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await Database.connect()
@@ -51,7 +52,7 @@ async def lifespan(app: FastAPI):
     yield
     await Database.disconnect()
 
-# Limpo: Sem o parâmetro swagger_favicon_url aqui (ele vai direto na rota abaixo)
+
 app = FastAPI(
     title="Simple IHM API",
     description="Ecossistema IoT para Automação Industrial - Fatec",
@@ -59,6 +60,7 @@ app = FastAPI(
     lifespan=lifespan,
     docs_url=None
 )
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -68,11 +70,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.get("/", tags=["Geral"])
 async def root():
     return {"mensagem": "API Simple IHM Ativa (Assíncrona)"}
 
-# Rota do Docs reduzida ao mínimo necessário
+
 @app.get("/docs", include_in_schema=False)
 async def custom_swagger_ui_html():
     return get_swagger_ui_html(
@@ -81,12 +84,14 @@ async def custom_swagger_ui_html():
         swagger_favicon_url="/favicon.ico"
     )
 
-# Rota do Favicon reduzida ao mínimo necessário
+
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
     return FileResponse(os.path.join(BASE_DIR, "..", "favicon.ico"))
 
+
 # --- ENDPOINTS DE TELEMETRIA (IOT) ---
+
 
 @app.get("/status-maquinas", response_model=list[MaquinaStatusResponse], tags=["Telemetria IoT"])
 async def listar_maquinas(conn: asyncpg.Connection = Depends(get_db)):
@@ -96,7 +101,7 @@ async def listar_maquinas(conn: asyncpg.Connection = Depends(get_db)):
     dados = await repository.obter_status_atual(conn)
     return [dict(row) for row in dados]
 
-# No main.py
+
 @app.get("/status-maquinas/{maquina_id}", response_model=MaquinaStatusResponse, tags=["Telemetria IoT"])
 async def listar_status_por_id(maquina_id: int, conn: asyncpg.Connection = Depends(get_db)):
     """
@@ -120,7 +125,9 @@ async def receber_dados(leitura: LeituraSensor, conn: asyncpg.Connection = Depen
     else:
         raise HTTPException(status_code=500, detail="Erro ao gravar os dados de telemetria no banco")
     
+
 # --- ENDPOINT DE TELEMETRIA E HISTÓRICO DE LOGS (DASHBOARD) ---
+
 
 @app.get("/logs", response_model=list[LogMaquinaResponse], tags=["Telemetria e Logs"])
 async def listar_historico_de_logs(
@@ -142,24 +149,24 @@ async def listar_historico_de_logs(
             detail="Para buscas com o período 'customizado', você deve informar as datas de início e fim."
         )
 
-    # Agora repassamos o limite dinâmico que veio do front-end para o repositório
+
     logs = await repository.buscar_historico_logs(
         conn=conn,
         maquina_id=maquina_id,
         periodo=periodo,
         data_inicio=data_inicio,
         data_fim=data_fim,
-        limite=limite  # <-- Passando a variável que veio do Query Param
+        limite=limite
     )
     
     return logs
 
 @app.post("/login", tags=["Autenticação"])
 async def login(credenciais: LoginRequest, conn: asyncpg.Connection = Depends(get_db)):
-    # Normaliza o email antes de consultar
+    
     email_normalizado = credenciais.email.lower().strip()
     
-    # Busca usando a string limpa
+    
     funcionario = await repository.obter_funcionario_por_email(conn, email_normalizado)
     
     if not funcionario:
@@ -174,7 +181,9 @@ async def login(credenciais: LoginRequest, conn: asyncpg.Connection = Depends(ge
         "nome": funcionario['nome']
     }
 
+
 # --- CRUD MAQUINAS ---
+
 
 @app.get("/maquinas", response_model=list[MaquinaResponse], tags=["CRUD Máquinas"])
 async def listar_maquinas(conn: asyncpg.Connection = Depends(get_db)):
@@ -203,19 +212,17 @@ async def obter_maquina(maquina_id: int, conn: asyncpg.Connection = Depends(get_
 async def post_maquina(maquina_dados: MaquinaCreate, conn: asyncpg.Connection = Depends(get_db)):
     """
     Cadastra uma nova máquina no ecossistema industrial.
-    O timestamp de cadastro é gerado nativamente pelo PostgreSQL.
     """
     dados_repositorio = maquina_dados.model_dump()
     
     try:
-        # O repositório agora devolve a linha real gerada pelo banco (asyncpg.Record)
+        
         nova_maquina = await repository.cadastrar_maquina(conn, dados_repositorio)
         
         if not nova_maquina:
             raise HTTPException(status_code=500, detail="Erro interno ao registrar a máquina.")
             
-        # CONVERSÃO EXPLÍCITA: Transforma o Record do asyncpg em dict puro.
-        # Executado em C pelo driver, consumo de CPU praticamente nulo e resolve o ResponseValidationError.
+        
         return dict(nova_maquina)
         
     except asyncpg.UniqueViolationError:
@@ -258,7 +265,7 @@ async def atualizar_cadastro_maquina(maquina_id: int, maquina_dados: MaquinaUpda
             "tag_maquina": maquina_dados.tag_maquina.upper().strip(),
             "nome_maquina": maquina_dados.nome_maquina.strip(),
             "setor": maquina_dados.setor,
-            "data_cadastro": datetime.now() # O React geralmente ignora este campo em um PUT, focando nos dados alterados
+            "data_cadastro": datetime.now() 
         }
     except asyncpg.UniqueViolationError:
         raise HTTPException(
@@ -269,6 +276,7 @@ async def atualizar_cadastro_maquina(maquina_id: int, maquina_dados: MaquinaUpda
 
 # --- ENDPOINTS DO CRUD DO DASHBOARD (FUNCIONÁRIOS) ---
 
+
 @app.get("/funcionarios", response_model=list[FuncionarioResponse], tags=["CRUD Funcionários"])
 async def listar_funcionarios(conn: asyncpg.Connection = Depends(get_db)):
     """
@@ -276,6 +284,7 @@ async def listar_funcionarios(conn: asyncpg.Connection = Depends(get_db)):
     """
     funcionarios = await repository.listar_funcionarios_ativos(conn)
     return funcionarios
+
 
 @app.post("/funcionarios", response_model=FuncionarioResponse, status_code=status.HTTP_201_CREATED, tags=["CRUD Funcionários"])
 async def cadastrar_funcionario(funcionario: FuncionarioCreate, conn: asyncpg.Connection = Depends(get_db)):
@@ -285,10 +294,10 @@ async def cadastrar_funcionario(funcionario: FuncionarioCreate, conn: asyncpg.Co
     """
     dados_repositorio = funcionario.model_dump()
     
-    # 1. NORMALIZAÇÃO: Garante unicidade e evita erros de digitação (Case-Insensitive)
+    
     dados_repositorio['email'] = funcionario.email.lower().strip()
     
-    # 2. SEGURANÇA: Hash da senha (nunca salvar texto puro)
+    
     senha_puro = dados_repositorio.pop('senha')
     dados_repositorio['senha_hash'] = pwd_context.hash(senha_puro)
 
@@ -301,7 +310,7 @@ async def cadastrar_funcionario(funcionario: FuncionarioCreate, conn: asyncpg.Co
                 detail="Erro ao processar o cadastro do funcionário."
             )
         
-        # Retorna o registro criado (usando o e-mail já normalizado)
+        
         return {
             "id": id_gerado, 
             "nome": funcionario.nome,
@@ -349,8 +358,7 @@ async def put_funcionario(funcionario_id: int, funcionario_dados: FuncionarioUpd
     Atualiza os dados cadastrais administrativos de um funcionário.
     A alteração de senha é bloqueada e isolada deste fluxo.
     """
-    # Como o modelo FuncionarioUpdate não possui mais o campo 'senha',
-    # o model_dump() vem limpo, contendo apenas dados cadastrais e 'ativo'
+    
     dados_repositorio = funcionario_dados.model_dump()
 
     try:
@@ -369,7 +377,9 @@ async def put_funcionario(funcionario_id: int, funcionario_dados: FuncionarioUpd
     except asyncpg.UniqueViolationError:
         raise HTTPException(status_code=400, detail="O e-mail informado já está em uso por outro operador.")
     
+
 # --- ENDPOINTS DO PLANO DE MANUTENÇÃO (PREVENTIVA / PREDITIVA) ---
+
 
 @app.post("/manutencoes", response_model=ManutencaoPreventivaResponse, status_code=status.HTTP_201_CREATED, tags=["Plano de Manutenção"])
 async def agendar_nova_manutencao(manutencao: ManutencaoPreventivaCreate, conn: asyncpg.Connection = Depends(get_db)):
@@ -394,6 +404,7 @@ async def agendar_nova_manutencao(manutencao: ManutencaoPreventivaCreate, conn: 
         "tipo_manutencao": manutencao.tipo_manutencao
     }
 
+
 @app.get("/manutencoes", response_model=list[ManutencaoPreventivaDetalhadaResponse], tags=["Plano de Manutenção"])
 async def listar_todas_manutencoes(conn: asyncpg.Connection = Depends(get_db)):
     """
@@ -401,6 +412,7 @@ async def listar_todas_manutencoes(conn: asyncpg.Connection = Depends(get_db)):
     e os nomes dos técnicos via LEFT JOIN (ideal para a tabela do Dashboard).
     """
     return await repository.listar_manutencoes_detalhadas(conn)
+
 
 @app.get("/manutencoes/{manutencao_id}", response_model=ManutencaoPreventivaDetalhadaResponse, tags=["Plano de Manutenção"])
 async def obter_manutencao_por_id(manutencao_id: int, conn: asyncpg.Connection = Depends(get_db)):
@@ -415,6 +427,7 @@ async def obter_manutencao_por_id(manutencao_id: int, conn: asyncpg.Connection =
         )
     return manutencao
 
+
 @app.put("/manutencoes/{manutencao_id}", response_model=ManutencaoPreventivaDetalhadaResponse, tags=["Plano de Manutenção"])
 async def atualizar_dados_manutencao(manutencao_id: int, dados_novos: ManutencaoPreventivaUpdate, conn: asyncpg.Connection = Depends(get_db)):
     """
@@ -428,9 +441,9 @@ async def atualizar_dados_manutencao(manutencao_id: int, dados_novos: Manutencao
             detail="Não foi possível atualizar. A ordem pode não existir ou já está CONCLUÍDA."
         )
     
-    # Buscamos a versão rica pós-Join para o React atualizar o card/linha perfeitamente
     registro_atualizado = await repository.obter_manutencao_por_id(conn, manutencao_id)
     return registro_atualizado
+
 
 @app.patch("/manutencoes/{manutencao_id}/concluir", response_model=ManutencaoPreventivaDetalhadaResponse, tags=["Plano de Manutenção"])
 async def concluir_ordem_manutencao(manutencao_id: int, encerramento: ManutencaoPreventivaConcluir, conn: asyncpg.Connection = Depends(get_db)):
@@ -445,9 +458,9 @@ async def concluir_ordem_manutencao(manutencao_id: int, encerramento: Manutencao
             detail="Falha ao encerrar ordem. Verifique se o técnico existe ou se a ordem já foi fechada."
         )
     
-    # Buscamos a versão rica pós-Join para devolver ao front-end a linha completa atualizada
     registro_atualizado = await repository.obter_manutencao_por_id(conn, manutencao_id)
     return registro_atualizado
+
 
 @app.delete("/manutencoes/{manutencao_id}", tags=["Plano de Manutenção"])
 async def deletar_manutencao_logica(manutencao_id: int, conn: asyncpg.Connection = Depends(get_db)):

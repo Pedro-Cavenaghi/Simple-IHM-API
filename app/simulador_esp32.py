@@ -2,7 +2,7 @@ import asyncio
 import random
 import httpx
 
-# Rotas da API Central
+# Rotas da API
 API_ENVIAR_DADOS = "http://localhost:8000/enviar-dados"
 API_MANUTENCOES = "http://localhost:8000/manutencoes"
 
@@ -12,7 +12,7 @@ CONFIG_MAQUINAS = {
     3: {"tag": "PRE-01", "corrente_media": 8.0, "vibracao_media": 0.4},
 }
 
-# Alinhado exatamente com o Enum StatusMaquina do Backend
+
 ESTADOS_POSSIVEIS = ["Ativa", "Inativa", "Desligada", "Manutenção"]
 
 # Buffer em memória para salvar dados caso a rede caia
@@ -27,12 +27,12 @@ async def checar_se_esta_em_manutencao(client: httpx.AsyncClient, maquina_id: in
         response = await client.get(API_MANUTENCOES, timeout=1.5)
         if response.status_code == 200:
             manutencoes = response.json()
-            # Varre as ordens de serviço buscando pendências para travar o estado lógico do hardware
+            
             for os in manutencoes:
                 if os.get("maquina_id") == maquina_id and os.get("concluida") is False:
                     return True
     except Exception:
-        # Se a rede falhar, assume falso para manter a máquina operando localmente no buffer
+        
         pass
     return False
 
@@ -67,14 +67,14 @@ def gerar_leitura_fake_otimizada(status_travado: bool, maquina_id: int) -> dict:
         potencia = corrente * tensao * 0.85
         frequencia = random.gauss(60.0, 0.2)
 
-    # GAPS DEFENSIVOS: Força limites absolutos para evitar que a cauda da Gaussiana estoure validações do Pydantic
+    # GAPS DEFENSIVOS
     corrente = max(0.0, corrente)
     vibracao = max(0.0, vibracao)
     potencia = max(0.0, potencia)
     tensao = max(0.0, min(250.0, tensao))
     frequencia = max(0.0, min(100.0, frequencia))
 
-    # Payload perfeitamente espelhado com o LeituraSensor do Backend
+    
     return {
         "maquina_id": maquina_id,
         "vibracao_rms": round(vibracao, 2),
@@ -94,8 +94,7 @@ async def enviar_dado(client: httpx.AsyncClient, payload: dict) -> bool:
             print(f"[Sucesso] {tag} -> Status: {payload['status_atual']} | {payload['corrente_ampere']} A")
             return True
         else:
-            # Se a API rejeitar por erro interno/validação (422), printamos para depuração.
-            # Não jogamos no buffer para não gerar um loop infinito de payloads corrompidos.
+            
             print(f"[Erro API] Status {response.status_code} para {tag}. Payload rejeitado pela validação.")
             return False
     except (httpx.ConnectError, httpx.TimeoutException):
@@ -119,10 +118,10 @@ async def processar_buffer(client: httpx.AsyncClient):
             if response.status_code in (200, 201):
                 print(f" [Buffer -> Sucesso] Dado retroativo da máquina {payload['maquina_id']} enviado.")
             else:
-                # Se persistir o erro de processamento da API, descarta para evitar envenenamento de fila
+                
                 print(f" [Buffer -> Descartado] Erro HTTP {response.status_code} no dado acumulado.")
         except (httpx.ConnectError, httpx.TimeoutException):
-            # Se a rede caiu de novo no meio do processo, devolve o resto para o buffer e interrompe a tentativa
+            
             BUFFER_LOCAL.append(payload)
             break
 
@@ -132,12 +131,11 @@ async def ciclo_maquina(maquina_id: int, intervalo: int):
         esta_em_manutencao = False
         contador_ciclos = 0
         
-        # Reduz overhead consultando ordens abertas a cada 30 segundos (15 ciclos * 2s)
+        
         CICLOS_PARA_CHECAR = 15 
 
         while True:
-            # Checa o status se atingir o intervalo OU se a máquina já estiver travada em manutenção
-            # (agiliza o retorno operacional assim que o técnico encerra a ordem no React)
+            
             if contador_ciclos % CICLOS_PARA_CHECAR == 0 or esta_em_manutencao:
                 esta_em_manutencao = await checar_se_esta_em_manutencao(client, maquina_id)
                 contador_ciclos = 0 
