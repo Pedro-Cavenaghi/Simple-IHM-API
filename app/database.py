@@ -1,14 +1,14 @@
 import asyncpg
-from .dbconfig import credenciais
+import os
+from .dbconfig import credenciais, DATABASE_URL_RAILWAY
 
-
-DB_CONFIG = {
-    "host": credenciais.db_host,
-    "database": credenciais.db_name,
-    "user": credenciais.db_user,
-    "password": credenciais.db_password,
-    "port": str(credenciais.db_port)
-}
+if DATABASE_URL_RAILWAY:
+    if DATABASE_URL_RAILWAY.startswith("postgres://"):
+        DB_URI = DATABASE_URL_RAILWAY.replace("postgres://", "postgresql://", 1)
+    else:
+        DB_URI = DATABASE_URL_RAILWAY
+else:
+    DB_URI = f"postgresql://{credenciais.db_user}:{credenciais.db_password}@{credenciais.db_host}:{credenciais.db_port}/{credenciais.db_name}"
 
 class Database:
     pool = None
@@ -22,11 +22,10 @@ class Database:
     @classmethod
     async def connect(cls):
         print("--- Inicializando Pool de Conexões Otimizado (asyncpg) ---")
-        
         cls.pool = await asyncpg.create_pool(
-            **DB_CONFIG,
-            min_size=5,
-            max_size=20
+            DB_URI,
+            min_size=2,
+            max_size=10
         )
 
     @classmethod
@@ -34,7 +33,6 @@ class Database:
         if cls.pool:
             print("--- Fechando Pool de Conexões com Segurança ---")
             await cls.pool.close()
-
 
 async def get_db():
     pool = Database.get_pool()
