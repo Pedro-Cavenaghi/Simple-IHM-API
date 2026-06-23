@@ -37,8 +37,8 @@ O backend foi projetado para suportar o fluxo contínuo de dados gerados por mic
 *   `POST /telemetria` - Endpoint de alta frequência consumido pelo hardware para envio de Corrente (A) e Vibração (RMS).
 *   `GET /telemetria/historico/{maquina_id}` - Retorna a série temporal de dados para plotagem de gráficos analíticos de manutenção preditiva.
 
-*(A documentação interativa completa e gerada automaticamente pode ser acessada via: 
-https://simple-ihm-production.up.railway.app/docs ).*
+*(A documentação interativa completa e gerada automaticamente pode ser acessada via:
+https://simple-ihm-api-production.up.railway.app/docs )*
 
 ---
 
