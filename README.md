@@ -10,7 +10,7 @@ Este repositório contém estritamente a **Central Backend** do ecossistema, res
 
 ## 🛠️ Tecnologias Utilizadas
 
-*   **Linguagem:** Python 3.11+
+*   **Linguagem:** Python 3.13+
 *   **Framework Web:** FastAPI (Arquitetura assíncrona)
 *   **Banco de Dados:** PostgreSQL (Modelo Relacional de Alta Performance)
 *   **Validação de Dados:** Pydantic
